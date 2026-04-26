@@ -57,3 +57,15 @@ config.cfg
 
 # shader files
 *.tmp
+
+# Local build/run artifacts (not committed)
+/dist/
+/tools/steamcmd/
+/build/.cache/
+/build/last-build.log
+
+# MSBuild intermediate output dirs produced by the v143 build
+**/Release/
+**/Release_tf_mod/
+**/Debug/
+**/Debug_tf_mod/

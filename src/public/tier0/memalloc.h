@@ -502,7 +502,7 @@ inline void *MemAlloc_ReallocAligned( void *ptr, size_t size, size_t align )
 
 	return ptr_new_aligned;
 }
-#else
+#elif defined(STEAM)
 #define MemAlloc_GetDebugInfoSize() g_pMemAlloc->GetDebugInfoSize()
 #define MemAlloc_SaveDebugInfo( pvDebugInfo ) g_pMemAlloc->SaveDebugInfo( pvDebugInfo )
 #define MemAlloc_RestoreDebugInfo( pvDebugInfo ) g_pMemAlloc->RestoreDebugInfo( pvDebugInfo )
@@ -513,6 +513,35 @@ inline void *MemAlloc_ReallocAligned( void *ptr, size_t size, size_t align )
 //-----------------------------------------------------------------------------
 
 #if !defined(STEAM) && defined(NO_MALLOC_OVERRIDE)
+
+// Modern UCRT in VS2017+ is incompatible with the legacy CRT override in
+// memoverride.cpp. With NO_MALLOC_OVERRIDE the engine bypasses that file and
+// the MemAlloc_* helpers below forward directly to the system allocator.
+
+#include <stdlib.h>
+#include <string.h>
+#ifdef _WIN32
+#include <malloc.h>
+#endif
+
+inline void *MemAlloc_Alloc( size_t nSize )                                                                         { return malloc( nSize ); }
+inline void *MemAlloc_Alloc( size_t nSize, const char *pFileName, int nLine )                                       { (void)pFileName; (void)nLine; return malloc( nSize ); }
+inline void MemAlloc_Free( void *ptr )                                                                              { free( ptr ); }
+inline void MemAlloc_Free( void *ptr, const char *pFileName, int nLine )                                            { (void)pFileName; (void)nLine; free( ptr ); }
+
+inline void *MemAlloc_AllocAligned( size_t size, size_t align )                                                     { return _aligned_malloc( size, align ); }
+inline void *MemAlloc_AllocAligned( size_t size, size_t align, const char *pszFile, int nLine )                     { (void)pszFile; (void)nLine; return _aligned_malloc( size, align ); }
+inline void *MemAlloc_AllocAlignedFileLine( size_t size, size_t align, const char *pszFile, int nLine )             { (void)pszFile; (void)nLine; return _aligned_malloc( size, align ); }
+inline void *MemAlloc_AllocAlignedUnattributed( size_t size, size_t align )                                         { return _aligned_malloc( size, align ); }
+
+inline void MemAlloc_FreeAligned( void *pMemBlock )                                                                 { _aligned_free( pMemBlock ); }
+inline void MemAlloc_FreeAligned( void *pMemBlock, const char *pszFile, int nLine )                                 { (void)pszFile; (void)nLine; _aligned_free( pMemBlock ); }
+
+inline void *MemAlloc_ReallocAligned( void *ptr, size_t size, size_t align )                                        { return _aligned_realloc( ptr, size, align ); }
+
+inline size_t MemAlloc_GetSizeAligned( void *pMemBlock )                                                            { return pMemBlock ? _aligned_msize( pMemBlock, 1, 0 ) : 0; }
+
+#define MemAlloc_GetSize( x ) _msize( x )
 
 #define MEM_ALLOC_CREDIT_(tag)	((void)0)
 #define MEM_ALLOC_CREDIT()	MEM_ALLOC_CREDIT_(__FILE__)
